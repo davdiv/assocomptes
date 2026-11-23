@@ -5,7 +5,7 @@ on:
   pull_request:
 jobs:
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       COMPOSE_PROJECT_NAME: assocomptes-e2e
     steps:
