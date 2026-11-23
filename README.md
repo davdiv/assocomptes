@@ -14,8 +14,8 @@ npm ci
 npm run build
 ```
 
-The MongoDB driver is pinned to 6.16.0 because later versions drop MongoDB
-4.0 support. Upgrade the database server before moving to a newer driver.
+Assocomptes requires MongoDB **4.4 or later** with the MongoDB Node.js driver
+7.x. Upgrade any older database server before deploying this version.
 
 ## End-to-end tests
 
@@ -29,9 +29,9 @@ docker compose -f compose.e2e.yml down --volumes
 ```
 
 The stack uses test-only accounts on Keycloak 10.0.2 and defaults to MongoDB
-4.0.28. Set `E2E_MONGO_IMAGE=mongo:8.0` on the Compose command to test on
-MongoDB 8 instead, after tearing down the old volumes. The application, Keycloak
-and MongoDB test ports are only published on loopback.
+8.3.17. To test another supported MongoDB version, set `E2E_MONGO_IMAGE` on
+the Compose command after tearing down the old volumes. The application,
+Keycloak and MongoDB test ports are only published on loopback.
 
 # License
 

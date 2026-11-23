@@ -18,7 +18,7 @@ services:
       retries: 20
 
   mongo:
-    image: ${E2E_MONGO_IMAGE:-mongo:4.0.28}
+    image: ${E2E_MONGO_IMAGE:-mongo:8.3.17}
     ports:
       - "127.0.0.1:27028:27017"
     healthcheck:

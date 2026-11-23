@@ -52,7 +52,7 @@
     "express": "4.17.1",
     "keycloak-connect": "10.0.2",
     "minimist": "1.2.5",
-    "mongodb": "6.16.0",
+    "mongodb": "7.9.1",
     "raw-body": "2.4.1"
   }
 }
