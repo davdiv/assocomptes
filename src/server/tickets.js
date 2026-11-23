@@ -24,30 +24,26 @@ module.exports = function (dbCollection) {
                 if (err) {
                     return next(err);
                 }
-                dbCollection.insert({
+                dbCollection.insertOne({
                     printer: printer,
                     date: new Date(),
                     data: data
-                }, function (err, data) {
-                    if (err) {
-                        console.log("Error while saving ticket from ", printer, err);
-                        return next(err);
-                    }
+                }).then(function () {
                     res.status(200).send("OK");
                     console.log("Saved ticket from ", printer);
+                }, function (err) {
+                    console.log("Error while saving ticket from ", printer, err);
+                    next(err);
                 });
             });
         },
         latest: function (req, res, next) {
             var printer = req.params.printer;
-            dbCollection.findOne({
+            return dbCollection.findOne({
                 printer: printer
             }, {
                 sort: [ ["date", -1] ]
-            }, function (err, result) {
-                if (err) {
-                    return next(err);
-                }
+            }).then(function (result) {
                 if (result) {
                     res.status(200).send({
                         date: result.date,
@@ -56,7 +52,7 @@ module.exports = function (dbCollection) {
                 } else {
                     res.status(404).send();
                 }
-            });
+            }).catch(next);
         }
     }
 };

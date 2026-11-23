@@ -2,6 +2,37 @@
 
 assocomptes is a program to manage account sheets and bank deposits for an association.
 
+## Build
+
+Use the Node.js version in `.nvmrc`. The first command fetches the pinned
+Hashspace sources; npm needs them before resolving the local dependency.
+
+```sh
+nvm use
+sh preinstall.sh
+npm ci
+npm run build
+```
+
+The MongoDB driver is pinned to 6.16.0 because later versions drop MongoDB
+4.0 support. Upgrade the database server before moving to a newer driver.
+
+## End-to-end tests
+
+With Docker Compose and the local dependencies installed:
+
+```sh
+npx playwright install chromium
+docker compose -f compose.e2e.yml up --build --wait --wait-timeout 180
+npm run test:e2e
+docker compose -f compose.e2e.yml down --volumes
+```
+
+The stack uses test-only accounts on Keycloak 10.0.2 and defaults to MongoDB
+4.0.28. Set `E2E_MONGO_IMAGE=mongo:8.0` on the Compose command to test on
+MongoDB 8 instead, after tearing down the old volumes. The application, Keycloak
+and MongoDB test ports are only published on loopback.
+
 # License
 
 	assocomptes : Program to manage account sheets and bank deposits for an association.

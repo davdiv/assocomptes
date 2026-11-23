@@ -1,4 +1,4 @@
-var ObjectID = require("mongodb").ObjectID;
+var ObjectId = require("mongodb").ObjectId;
 var NotFoundError = require("../../../common/notFoundError");
 var SimpleError = require("../../../common/simpleError");
 
@@ -26,16 +26,16 @@ module.exports = class {
         var processedDoc = self.processToDB(doc);
         processedDoc.current.lastChangeBy = req.kauth.grant.access_token.content.sub;
         processedDoc.current.lastChangeTimestamp = new Date();
-        const result = await this.collection.insert(processedDoc);
-        return self.processFromDB(result.ops[0]);
+        const result = await this.collection.insertOne(processedDoc);
+        return self.processFromDB({ _id: result.insertedId, current: processedDoc.current });
     }
 
     async remove(docId, lastChangeTimestamp, req) {
-        const id = new ObjectID(docId);
+        const id = new ObjectId(docId);
         const previousDoc = await this.collection.findOne({
             _id: id
         }, {
-            fields : {
+            projection : {
                 "current" : 1
             }
         });
@@ -49,14 +49,13 @@ module.exports = class {
                 lastChangeTimestamp: new Date(),
                 lastChangeBy: req.kauth.grant.access_token.content.sub
             };
-            const result = await this.collection.remove({
+            const result = await this.collection.deleteOne({
                 _id : id,
                 'current.lastChangeTimestamp' : oldCurrent.lastChangeTimestamp
             });
-            const numUpdates = result.result.n;
-            if (numUpdates == 1) {
+            if (result.deletedCount == 1) {
                 if (this.historyCollection) {
-                    await this.historyCollection.insert({
+                    await this.historyCollection.insertOne({
                         id: id,
                         version: oldCurrent,
                         deleted: removeInfo
@@ -69,11 +68,11 @@ module.exports = class {
     }
 
     async save(doc, req) {
-        const id = new ObjectID(doc.id);
+        const id = new ObjectId(doc.id);
         const previousDoc = await this.collection.findOne({
             _id: id
         }, {
-            fields : {
+            projection : {
                 "current" : 1
             }
         });
@@ -88,16 +87,15 @@ module.exports = class {
         if (!concurrentModification) {
             newCurrent.lastChangeTimestamp = new Date();
             newCurrent.lastChangeBy = req.kauth.grant.access_token.content.sub;
-            const result = await this.collection.update({
+            const result = await this.collection.updateOne({
                 _id : id,
                 'current.lastChangeTimestamp' : lastChangeTimestamp
             }, {
                 '$set' : processedDoc
             });
-            const numUpdates = result.result.nModified;
-            if (numUpdates == 1) {
+            if (result.modifiedCount == 1) {
                 if (this.historyCollection) {
-                    await this.historyCollection.insert({
+                    await this.historyCollection.insertOne({
                         id: id,
                         version: previousDoc.current
                     });
@@ -114,9 +112,9 @@ module.exports = class {
     get(id) {
         var self = this;
         return self.collection.findOne({
-            _id : new ObjectID(id),
+            _id : new ObjectId(id),
         }, {
-            fields : {
+            projection : {
                 "current" : 1
             }
         }).then(function (res) {
@@ -132,9 +130,9 @@ module.exports = class {
         var self = this;
         query = query || {};
         options = options || {};
-        return self.collection.find(query, {
-            "current" : 1
-        }, options).toArray().then(function (array) {
+        return self.collection.find(query, Object.assign({}, options, {
+            projection : { "current" : 1 }
+        })).toArray().then(function (array) {
             return array.map(self.processFromDB, self);
         });
     }

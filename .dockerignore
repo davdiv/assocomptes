@@ -2,3 +2,5 @@
 /hashspace
 /build
 /.git
+/playwright-report
+/test-results

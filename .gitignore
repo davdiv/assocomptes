@@ -3,3 +3,5 @@
 /.settings
 /build
 /hashspace
+/playwright-report
+/test-results

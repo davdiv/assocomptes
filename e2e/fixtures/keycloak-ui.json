@@ -1,0 +1,7 @@
+{
+  "realm": "assocomptes",
+  "auth-server-url": "http://keycloak.localhost:18081/auth",
+  "ssl-required": "none",
+  "resource": "assocomptes",
+  "public-client": true
+}
