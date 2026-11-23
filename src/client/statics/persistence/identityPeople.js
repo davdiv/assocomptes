@@ -1,10 +1,10 @@
 var klass = require("hsp/klass");
 var RestCache = require("./utils/restCache");
 
-var KeycloakPeopleCache = klass({
+var IdentityPeopleCache = klass({
     $extends : RestCache,
     $constructor : function () {
-        RestCache.$constructor.call(this, "keycloak");
+        RestCache.$constructor.call(this, "identities");
     },
     readRole : "readPeople",
     canSave: function() {
@@ -12,4 +12,4 @@ var KeycloakPeopleCache = klass({
     }
 });
 
-module.exports = new KeycloakPeopleCache();
+module.exports = new IdentityPeopleCache();

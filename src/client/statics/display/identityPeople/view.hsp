@@ -1,7 +1,7 @@
 <script>
 var klass = require("hsp/klass");
 var personRef = require("../peopleId/viewAny.hsp.js");
-var keycloakPeople = require("../../persistence/keycloakPeople");
+var identityPeople = require("../../persistence/identityPeople");
 var resolvePromise = require("../../utils/resolvePromise");
 var isPromise = require("../../utils/isPromise");
 
@@ -20,7 +20,7 @@ var Ctrl = klass({
     },
     $onDataChange: function () {
         if (this.data) {
-            this.identity = keycloakPeople.getItemContent(this.data);
+            this.identity = identityPeople.getItemContent(this.data);
             resolvePromise(this,"identity","error");
         }
     }

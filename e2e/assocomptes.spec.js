@@ -1,66 +1,117 @@
 const { test, expect } = require("@playwright/test");
 const { MongoClient, ObjectId } = require("mongodb");
+const { execFileSync } = require("node:child_process");
 
-const loginUrl = /^http:\/\/keycloak\.localhost:18081\/auth\/realms\/assocomptes\/protocol\/openid-connect\/auth/;
+const loginUrl = /^https:\/\/auth\.assocomptes\.localhost:18443\//;
 const password = "local-e2e-password";
 const dbUrl = "mongodb://127.0.0.1:27028/assocomptes_e2e";
 
 async function signIn(page, username, path = "/") {
     await page.goto(path);
     await expect(page).toHaveURL(loginUrl);
-    await page.locator("#username").fill(username);
-    await page.locator("#password").fill(password);
-    await page.locator("#kc-login").click();
+    await page.locator("#username-textfield").fill(username);
+    await page.locator("#password-textfield").fill(password);
+    await page.locator("#sign-in-button").click();
     await expect(page.getByRole("link", { name: "Assocomptes" })).toBeVisible();
 }
 
-async function authorization(request, username) {
-    const response = await request.post("http://127.0.0.1:18081/auth/realms/assocomptes/protocol/openid-connect/token", {
-        form: { grant_type: "password", client_id: "assocomptes", username, password }
-    });
-    expect(response.status()).toBe(200);
-    const { access_token: token } = await response.json();
-    const { sub } = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
-    return { headers: { Authorization: "Bearer " + token }, sub };
-}
-
-test("signs in through Keycloak and signs out of the session", async ({ page }) => {
+test("signs in through Authelia and signs out of the session", async ({ page }) => {
     await signIn(page, "editor");
     await page.getByText("Editor Example", { exact: true }).click();
-    await expect(page.getByRole("link", { name: "Paramètres utilisateur" })).toBeVisible();
     page.on("dialog", dialog => dialog.accept());
     await page.getByRole("link", { name: "Déconnexion" }).click();
     await expect(page).toHaveURL(loginUrl);
-    await expect(page.locator("#kc-login")).toBeVisible();
+    await expect(page.locator("#sign-in-button")).toBeVisible();
+    await page.goto("/");
+    await expect(page.locator("#sign-in-button")).toBeVisible();
 });
 
-test("denies anonymous API access and reader writes while showing the audit author", async ({ page, request }) => {
-    const { headers, sub } = await authorization(request, "editor");
-    const reader = await authorization(request, "reader");
-    const response = await request.post("/api/people", { headers, data: { firstName: "ReadOnlyTestPerson" } });
-    expect(response.status()).toBe(200);
-    const { id } = await response.json();
+const forged = {
+    "Remote-User": "editor",
+    "Remote-Groups": "writePeople",
+    "Remote-Name": "Forged Name",
+    "Remote-Email": "forged@example.test"
+};
+
+test("rejects a direct backend request even with forged proxy and identity headers", () => {
+    const headers = { ...forged, "X-Forwarded-For": "172.30.83.2" };
+    const status = execFileSync("docker", ["compose", "-f", "compose.e2e.yml", "exec", "-T", "app", "node", "-e",
+        `fetch("http://127.0.0.1:8080/api/profile", { headers: ${JSON.stringify(headers)} })
+            .then(r => console.log(r.status), e => { console.error(e); process.exitCode = 1; })`
+    ], { encoding: "utf8" });
+    expect(status.trim()).toBe("401");
+});
+
+test("rejects anonymous API requests even when they send forged identity headers", async ({ request }) => {
+    for (const headers of [{}, forged]) {
+        const response = await request.get("/api/profile", {
+            maxRedirects: 0, headers: { Accept: "application/json", ...headers }
+        });
+        expect(response.status()).toBe(401);
+        expect(response.headers().location).toMatch(loginUrl);
+    }
+});
+
+test("denies reader writes and header impersonation, and shows old and new audit authors", async ({ page, browser, baseURL }) => {
+    const headers = { Origin: baseURL };
+    const editor = await browser.newPage({ baseURL, ignoreHTTPSErrors: true });
+    let newId;
+    const oldId = new ObjectId();
+    const sub = "d3f93b44-e225-4ab5-a29c-3ecc65b7dac0";
     const authorId = new ObjectId();
     const client = await MongoClient.connect(dbUrl);
     const db = client.db();
     try {
+        await signIn(editor, "editor");
+        const response = await editor.request.post("/api/people", { headers, data: { firstName: "ReadOnlyTestPerson" } });
+        expect(response.status()).toBe(200);
+        const created = await response.json();
+        expect(created.lastChangeBy).toBe("editor");
+        newId = new ObjectId(created.id);
         await db.collection("people").insertOne({
             _id: authorId, current: { firstName: "Audit", lastName: "Author", lastChangeTimestamp: new Date() }
         });
-        await db.collection("keycloakPeople").replaceOne({ _id: sub }, { _id: sub, id: authorId.toString() }, { upsert: true });
-        expect((await request.get("/api/people/" + id)).status()).toBe(403);
-        expect((await request.get("/api/people/" + id, { headers: reader.headers })).status()).toBe(200);
-        expect((await request.post("/api/people", { headers: reader.headers, data: { firstName: "Denied" } })).status()).toBe(403);
-
-        await signIn(page, "reader", "/people/" + id);
+        for (const identity of [sub, "editor"]) {
+            await db.collection("keycloakPeople").replaceOne({ _id: identity }, { _id: identity, id: authorId.toString() }, { upsert: true });
+        }
+        await db.collection("people").insertOne({
+            _id: oldId, current: { firstName: "LegacyTestPerson", lastChangeBy: sub, lastChangeTimestamp: new Date() }
+        });
+        await signIn(page, "reader", "/people/" + newId);
+        expect((await page.request.get("/api/people/" + newId)).status()).toBe(200);
+        expect((await page.request.post("/api/people", { headers, data: { firstName: "Denied" } })).status()).toBe(403);
+        const impersonation = await page.request.get("/api/profile", { headers: forged });
+        expect(impersonation.status()).toBe(200);
+        expect(await impersonation.json()).toMatchObject({
+            username: "reader", groups: ["readPeople", "readAccountSheets", "readDeposits"],
+            name: "Reader Example", email: "reader@example.test"
+        });
+        expect((await page.request.post("/api/people", { headers: { ...headers, ...forged }, data: { firstName: "Denied" } })).status()).toBe(403);
         await expect(page.getByText("ReadOnlyTestPerson", { exact: true }).first()).toBeVisible();
         await expect(page.getByText("Audit Author", { exact: true })).toBeVisible();
         await expect(page.getByTitle("Modifier", { exact: true })).toHaveCount(0);
         await expect(page.getByTitle("Supprimer", { exact: true })).toHaveCount(0);
+        await page.goto("/people/" + oldId);
+        await expect(page.getByText("LegacyTestPerson", { exact: true }).first()).toBeVisible();
+        await expect(page.getByText("Audit Author", { exact: true })).toBeVisible();
     } finally {
-        await db.collection("keycloakPeople").deleteOne({ _id: sub });
-        await db.collection("people").deleteMany({ _id: { $in: [authorId, new ObjectId(id)] } });
+        await db.collection("keycloakPeople").deleteMany({ _id: { $in: [sub, "editor"] } });
+        await db.collection("people").deleteMany({ _id: { $in: [authorId, oldId, ...(newId ? [newId] : [])] } });
         await client.close();
+        await editor.close();
+    }
+});
+
+test("rejects cookie-authenticated cross-origin writes and writes without an Origin", async ({ page }) => {
+    await signIn(page, "editor");
+    expect(await page.evaluate(async () => (await fetch("/api/people/search", {
+        method: "POST", body: JSON.stringify({ options: { limit: 1 } })
+    })).status)).toBe(200);
+    for (const headers of [{ Origin: "https://other.example.test" }, {}]) {
+        const result = await page.request.post("/api/people", {
+            headers, data: { firstName: "Denied cross-origin" }, maxRedirects: 0
+        });
+        expect(result.status()).toBe(403);
     }
 });
 
@@ -82,12 +133,14 @@ const records = [
 ];
 
 for (const { endpoint, collection, initial, update } of records) {
-    test("creates, searches, updates and deletes " + collection + " with audit history", async ({ request }) => {
-        const { headers, sub } = await authorization(request, "editor");
+    test("creates, searches, updates and deletes " + collection + " with audit history", async ({ page, baseURL }) => {
+        await signIn(page, "editor");
+        const request = page.request;
+        const headers = { Origin: baseURL };
         const create = await request.post(endpoint, { headers, data: initial });
         expect(create.status()).toBe(200);
         const created = await create.json();
-        expect(created).toMatchObject({ lastChangeBy: sub });
+        expect(created).toMatchObject({ lastChangeBy: "editor" });
 
         const id = new ObjectId(created.id);
         const client = await MongoClient.connect(dbUrl);
@@ -108,7 +161,7 @@ for (const { endpoint, collection, initial, update } of records) {
             const write = await request.put(path, { headers, data: { ...created, ...update } });
             expect(write.status()).toBe(200);
             const updated = await write.json();
-            expect(updated).toMatchObject({ ...update, id: created.id, lastChangeBy: sub });
+            expect(updated).toMatchObject({ ...update, id: created.id, lastChangeBy: "editor" });
 
             const remove = await request.delete(path, { headers, params: {
                 lastChangeTimestamp: updated.lastChangeTimestamp.$date
@@ -118,8 +171,8 @@ for (const { endpoint, collection, initial, update } of records) {
             const entries = await history.find({ id }).toArray();
             expect(entries).toHaveLength(2);
             expect(entries).toEqual(expect.arrayContaining([
-                expect.objectContaining({ version: expect.objectContaining({ lastChangeBy: sub }) }),
-                expect.objectContaining({ deleted: expect.objectContaining({ lastChangeBy: sub }) })
+                expect.objectContaining({ version: expect.objectContaining({ lastChangeBy: "editor" }) }),
+                expect.objectContaining({ deleted: expect.objectContaining({ lastChangeBy: "editor" }) })
             ]));
         } finally {
             await db.collection(collection).deleteOne({ _id: id });

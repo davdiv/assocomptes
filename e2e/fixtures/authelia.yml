@@ -1,0 +1,29 @@
+server:
+  address: tcp://0.0.0.0:9091
+
+authentication_backend:
+  password_reset:
+    disable: true
+  file:
+    path: /config/users_database.yml
+
+session:
+  cookies:
+    - domain: assocomptes.localhost
+      authelia_url: https://auth.assocomptes.localhost:18443
+      default_redirection_url: https://assocomptes.localhost:18443
+      same_site: lax
+
+storage:
+  local:
+    path: /config/db.sqlite3
+
+notifier:
+  filesystem:
+    filename: /config/notifications.log
+
+access_control:
+  default_policy: deny
+  rules:
+    - domain: assocomptes.localhost
+      policy: one_factor

@@ -5,7 +5,7 @@ var resolvePromise = require("../utils/resolvePromise");
 var isPromise = require("../utils/isPromise");
 var showError = require("../display/errors/view.hsp.js");
 var showDate = require("../display/dates/view.hsp.js");
-var showKeycloakPeople = require("../display/keycloakPeople/view.hsp.js");
+var showIdentity = require("../display/identityPeople/view.hsp.js");
 
 var copy = function (original) {
     if (isPromise(original)) {
@@ -248,7 +248,7 @@ var isValidData = function (data) {
             {' '}le <#showDate data="{data.lastChangeTimestamp}" />
         {/if}
         {if data.lastChangeBy}
-            {' '}par <#showKeycloakPeople data="{data.lastChangeBy}" />
+            {' '}par <#showIdentity data="{data.lastChangeBy}" />
         {/if}
         <br>
         </p>

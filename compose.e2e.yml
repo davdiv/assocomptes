@@ -1,24 +1,27 @@
 services:
   app:
     build: .
-    command: ["--db-url", "mongodb://mongo:27017/assocomptes_e2e", "--keycloak-ui", "/fixtures/keycloak-ui.json", "--keycloak-backend", "/fixtures/keycloak-backend.json"]
-    ports:
-      - "127.0.0.1:18080:8080"
-    volumes:
-      - ./e2e/fixtures:/fixtures:ro
+    command: ["--db-url", "mongodb://mongo:27017/assocomptes_e2e"]
+    environment:
+      AUTH_TRUSTED_PROXY: 172.30.83.2
+      AUTH_ORIGIN: https://assocomptes.localhost:18443
+      AUTH_LOGOUT_URL: https://auth.assocomptes.localhost:18443/logout
+    networks:
+      - backend
+      - database
     depends_on:
       mongo:
         condition: service_healthy
-      keycloak:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/keycloak.json').then(r => process.exit(r.ok ? 0 : 1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/profile').then(r => process.exit(r.status === 401 ? 0 : 1))"]
       interval: 2s
       timeout: 5s
       retries: 20
 
   mongo:
     image: ${E2E_MONGO_IMAGE:-mongo:8.3.17}
+    networks:
+      - database
     ports:
       - "127.0.0.1:27028:27017"
     healthcheck:
@@ -27,23 +30,47 @@ services:
       timeout: 5s
       retries: 30
 
-  keycloak:
-    image: quay.io/keycloak/keycloak:10.0.2
-    command: ["-b", "0.0.0.0", "-Djboss.http.port=18081"]
-    environment:
-      DB_VENDOR: h2
-      KEYCLOAK_FRONTEND_URL: http://keycloak.localhost:18081/auth
-      KEYCLOAK_IMPORT: /fixtures/keycloak-realm.json
+  traefik:
+    image: traefik:v3.7.18
+    command:
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --entrypoints.websecure.address=:443
+      - --global.aliasheadersstrategy=reject
+      - --ping=true
     ports:
-      - "127.0.0.1:18081:18081"
+      - "127.0.0.1:18443:443"
     volumes:
-      - ./e2e/fixtures:/fixtures:ro
+      - ./e2e/fixtures/traefik.yml:/etc/traefik/dynamic.yml:ro
+    depends_on:
+      authelia:
+        condition: service_healthy
+      app:
+        condition: service_healthy
     networks:
       default:
-        aliases:
-          - keycloak.localhost
+      backend:
+        ipv4_address: 172.30.83.2
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:18081/auth/realms/assocomptes/.well-known/openid-configuration"]
-      interval: 3s
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 2s
       timeout: 5s
-      retries: 40
+      retries: 20
+
+  authelia:
+    image: authelia/authelia:4.39.28
+    entrypoint: ["authelia"]
+    environment:
+      AUTHELIA_SESSION_SECRET: local-e2e-session-secret-not-for-production
+      AUTHELIA_STORAGE_ENCRYPTION_KEY: local-e2e-storage-key-not-for-production
+    volumes:
+      - ./e2e/fixtures/authelia.yml:/config/configuration.yml:ro
+      - ./e2e/fixtures/authelia-users.yml:/config/users_database.yml:ro
+
+networks:
+  backend:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.83.0/28
+          ip_range: 172.30.83.8/29
+  database:

@@ -1,33 +1,34 @@
 var express = require("express");
+var requireGroup = require("./auth").requireGroup;
 var bodyParser = require("./bodyParser");
 var idValidator = require("./idValidator");
 var ValidationError = require("../common/validation/utils/validationError");
 
-var RestRouter = function (dbCollection, keycloak, readRole, writeRole) {
+var RestRouter = function (dbCollection, readRole, writeRole) {
     var router = express.Router();
     router.param("id", idValidator)
 
-    router.post("/", keycloak.protect(writeRole), bodyParser, function (req, res, next) {
+    router.post("/", requireGroup(writeRole), bodyParser, function (req, res, next) {
         dbCollection.insert(req.body, req).then(function (doc) {
             res.status(200).send(doc);
         }).then(null, next);
     });
 
-    router.post("/search", keycloak.protect(readRole), bodyParser, function (req, res, next) {
+    router.post("/search", requireGroup(readRole), bodyParser, function (req, res, next) {
         var body = req.body || {};
         dbCollection.search(body.query, body.options).then(function (array) {
             res.status(200).send(array);
         }).then(null, next);
     });
 
-    router.get("/suggestions", keycloak.protect(readRole), function (req, res, next) {
+    router.get("/suggestions", requireGroup(readRole), function (req, res, next) {
         var query = req.query.q;
         dbCollection.suggestions(query).then(function (array) {
             res.status(200).send(array);
         }).then(null, next);
     });
 
-    router.get("/:id", keycloak.protect(readRole), function (req, res, next) {
+    router.get("/:id", requireGroup(readRole), function (req, res, next) {
         dbCollection.get(req.params.id).then(function (doc) {
             res.set("ETag", '"' + doc.lastChangeTimestamp.getTime() + '"');
             res.set("Last-Modified", doc.lastChangeTimestamp.toUTCString());
@@ -39,7 +40,7 @@ var RestRouter = function (dbCollection, keycloak, readRole, writeRole) {
         }).then(null, next);
     });
 
-    router.put("/:id", keycloak.protect(writeRole), bodyParser, function (req, res, next) {
+    router.put("/:id", requireGroup(writeRole), bodyParser, function (req, res, next) {
         if (req.body.id !== req.params.id) {
             next(new ValidationError("id.different", req.body.id, [ req.body.id, req.params.id ]));
             return;
@@ -49,7 +50,7 @@ var RestRouter = function (dbCollection, keycloak, readRole, writeRole) {
         }).then(null, next);
     });
 
-    router.delete("/:id", keycloak.protect(writeRole), function (req, res, next) {
+    router.delete("/:id", requireGroup(writeRole), function (req, res, next) {
         var lastChangeTimestamp = +req.query.lastChangeTimestamp;
         if (isNaN(lastChangeTimestamp)) {
             next(new ValidationError("lastChangeTimestamp", lastChangeTimestamp));

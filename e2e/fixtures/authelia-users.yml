@@ -1,0 +1,11 @@
+users:
+  editor:
+    displayname: Editor Example
+    password: '$argon2id$v=19$m=65536,t=3,p=4$sd1q3HY0U23UMQeYXs5gwQ$zFyoWREga1R7iAy3lGQZScoe04lu8vURpKebAD2P53s'
+    email: editor@example.test
+    groups: [readPeople, writePeople, readAccountSheets, writeAccountSheets, readDeposits, writeDeposits]
+  reader:
+    displayname: Reader Example
+    password: '$argon2id$v=19$m=65536,t=3,p=4$sd1q3HY0U23UMQeYXs5gwQ$zFyoWREga1R7iAy3lGQZScoe04lu8vURpKebAD2P53s'
+    email: reader@example.test
+    groups: [readPeople, readAccountSheets, readDeposits]

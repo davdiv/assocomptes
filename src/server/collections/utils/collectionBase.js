@@ -24,7 +24,7 @@ module.exports = class {
     async insert(doc, req) {
         var self = this;
         var processedDoc = self.processToDB(doc);
-        processedDoc.current.lastChangeBy = req.kauth.grant.access_token.content.sub;
+        processedDoc.current.lastChangeBy = req.identity.username;
         processedDoc.current.lastChangeTimestamp = new Date();
         const result = await this.collection.insertOne(processedDoc);
         return self.processFromDB({ _id: result.insertedId, current: processedDoc.current });
@@ -47,7 +47,7 @@ module.exports = class {
         if (!concurrentModification) {
             var removeInfo = {
                 lastChangeTimestamp: new Date(),
-                lastChangeBy: req.kauth.grant.access_token.content.sub
+                lastChangeBy: req.identity.username
             };
             const result = await this.collection.deleteOne({
                 _id : id,
@@ -86,7 +86,7 @@ module.exports = class {
         const concurrentModification = oldCurrent.lastChangeTimestamp.getTime() !== lastChangeTimestamp.getTime();
         if (!concurrentModification) {
             newCurrent.lastChangeTimestamp = new Date();
-            newCurrent.lastChangeBy = req.kauth.grant.access_token.content.sub;
+            newCurrent.lastChangeBy = req.identity.username;
             const result = await this.collection.updateOne({
                 _id : id,
                 'current.lastChangeTimestamp' : lastChangeTimestamp
