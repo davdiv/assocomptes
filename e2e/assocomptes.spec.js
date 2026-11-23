@@ -128,3 +128,153 @@ for (const { endpoint, collection, initial, update } of records) {
         }
     });
 }
+
+function field(page, label) {
+    return page.locator("label").and(page.getByText(label, { exact: true }))
+        .locator("xpath=following-sibling::div[1]//input");
+}
+
+async function openNew(page, name) {
+    await page.getByRole("link").filter({ hasText: name }).click();
+    await expect(page).toHaveURL(/\/new\?/);
+}
+
+async function saveForm(page) {
+    await page.getByRole("button").filter({ hasText: /^\s*Enregistrer\s*$/ }).click();
+}
+
+async function cancelEdit(page) {
+    page.once("dialog", dialog => dialog.accept());
+    await page.getByRole("button").filter({ hasText: /^\s*Annuler\s*$/ }).click();
+    await expect(page.getByTitle("Modifier", { exact: true })).toBeVisible();
+}
+
+async function deleteFromView(page) {
+    const url = page.url();
+    page.once("dialog", dialog => dialog.accept());
+    await page.getByTitle("Supprimer", { exact: true }).click();
+    await expect(page).not.toHaveURL(url);
+    await page.goto(url);
+    await expect(page.getByText("Le document demandé n'a pas pu être trouvé.")).toBeVisible();
+}
+
+test("creates, finds, edits, cancels and deletes a person in the UI", async ({ page }) => {
+    const firstName = "Camille" + new ObjectId().toHexString();
+    await signIn(page, "editor");
+    await openNew(page, "Nouvelle personne");
+    await saveForm(page);
+    await expect(page.locator(".alert-danger")).toContainText("Vous devez préciser au moins un prénom");
+    await expect(page).toHaveURL(/\/people\/new\?/);
+
+    await field(page, "Prénom").fill(firstName);
+    await field(page, "Nom").fill("Durand");
+    await saveForm(page);
+    await expect(page).toHaveURL(/\/people\/[\da-f]{24}$/);
+    const url = page.url();
+    await expect(page.getByRole("heading", { name: firstName + " Durand", exact: true })).toBeVisible();
+
+    await page.getByTitle("Modifier", { exact: true }).click();
+    await field(page, "Nom").fill("NomAnnulé");
+    await cancelEdit(page);
+    await expect(page.getByRole("heading", { name: firstName + " Durand", exact: true })).toBeVisible();
+    await page.getByTitle("Modifier", { exact: true }).click();
+    await expect(field(page, "Nom")).toHaveValue("Durand");
+    await field(page, "Nom").fill("Martin");
+    await saveForm(page);
+    await expect(page.getByRole("heading", { name: firstName + " Martin", exact: true })).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: firstName + " Martin", exact: true })).toBeVisible();
+    await page.goto("/");
+    const search = page.locator(".navbar-form");
+    await search.getByRole("textbox").fill(firstName);
+    await search.getByRole("link").filter({ hasText: firstName + " Martin" }).click();
+    await expect(page).toHaveURL(url);
+    await deleteFromView(page);
+});
+
+async function searchReport(page, title) {
+    await page.getByRole("link").filter({ hasText: title }).click();
+    await field(page, "Date de début").fill("14/03/2020");
+    await field(page, "Date de fin").fill("14/03/2020");
+    await page.getByRole("button", { name: "Rechercher", exact: true }).click();
+}
+
+test("creates and edits an account sheet and finds it in the accounts report", async ({ page }) => {
+    await signIn(page, "editor");
+    await openNew(page, "Nouvelle feuille de comptes");
+    await field(page, "Date").fill("14/03/2020");
+    const movement = page.locator(".form-group").filter({
+        has: page.getByText("Mouvements de caisse", { exact: true })
+    }).locator("xpath=following-sibling::div[1]");
+    await movement.locator(".dropdown input").fill("RecetteE2E");
+    await movement.locator("input").last().fill("0");
+    await saveForm(page);
+    await expect(page.locator(".alert-danger")).toContainText("La valeur doit être différente de 0.");
+    await expect(page).toHaveURL(/\/accountSheets\/new\?/);
+
+    await movement.locator("input").last().fill("24.50");
+    await field(page, "Montant réel").fill("24.50");
+    await saveForm(page);
+    await expect(page).toHaveURL(/\/accountSheets\/[\da-f]{24}$/);
+    const url = new URL(page.url());
+    await expect(page.getByRole("cell", { name: "RecetteE2E", exact: true })).toBeVisible();
+
+    await page.getByTitle("Modifier", { exact: true }).click();
+    await page.locator("textarea").fill("Remarque de caisse E2E");
+    await saveForm(page);
+    await expect(page.getByText("Remarque de caisse E2E")).toBeVisible();
+    await page.reload();
+    await expect(page.getByText("Remarque de caisse E2E")).toBeVisible();
+    await expect(page.getByRole("row").filter({ hasText: "RecetteE2E" })).toContainText("24.50 €");
+
+    await page.goto("/");
+    await searchReport(page, "Rechercher dans les comptes");
+    await expect(page.getByRole("heading", { name: "Résumé simplifié" })).toBeVisible();
+    await expect(page.getByRole("row").filter({ hasText: "RecetteE2E" }).first()).toContainText("24.50 €");
+    await page.goto(url.href);
+    await deleteFromView(page);
+});
+
+test("creates and edits a deposit and finds it in the deposits report", async ({ page }) => {
+    await signIn(page, "editor");
+    await openNew(page, "Nouveau dépôt");
+    await field(page, "Date").fill("14/03/2020");
+    await field(page, "Montant déclaré").fill("38.25");
+    await saveForm(page);
+    await expect(page.locator(".alert-danger")).toContainText("depositNumber: Ce champ est obligatoire.");
+    await expect(page).toHaveURL(/\/deposits\/new\?/);
+
+    await field(page, "Numéro").fill("DEP-E2E-001");
+    await saveForm(page);
+    await expect(page).toHaveURL(/\/deposits\/[\da-f]{24}$/);
+    const url = new URL(page.url());
+    await expect(page.getByRole("cell", { name: "DEP-E2E-001", exact: true })).toBeVisible();
+    await page.getByTitle("Modifier", { exact: true }).click();
+    await field(page, "Numéro").fill("DEP-E2E-002");
+    await saveForm(page);
+    await expect(page.getByRole("cell", { name: "DEP-E2E-002", exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("cell", { name: "DEP-E2E-002", exact: true })).toBeVisible();
+
+    await page.goto("/");
+    await searchReport(page, "Rechercher dans les dépôts");
+    const row = page.getByRole("row").filter({ hasText: "DEP-E2E-002" });
+    await expect(row).toContainText("38.25 €");
+    await row.locator(`a[href="${url.pathname}"]`).click();
+    await expect(page).toHaveURL(url.href);
+    await deleteFromView(page);
+});
+
+test("readers have no home creation shortcuts and cannot save a directly opened form", async ({ page }) => {
+    await signIn(page, "reader");
+    for (const name of ["Nouvelle personne", "Nouvelle feuille de comptes", "Nouveau dépôt"]) {
+        await expect(page.getByRole("link").filter({ hasText: name })).toHaveCount(0);
+    }
+
+    await page.goto("/people/new");
+    await field(page, "Prénom").fill("ReaderCannotCreate");
+    await saveForm(page);
+    await expect(page.locator(".alert-danger")).toContainText("Vous ne pouvez pas enregistrer ce document.");
+    await expect(page).toHaveURL(/\/people\/new\?/);
+});
