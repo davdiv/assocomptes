@@ -69,7 +69,7 @@ var refreshItem = function(cache, curItem) {
 
 var Cache = klass({
     $constructor : function() {
-        this.items = {};
+        this.items = Object.create(null);
     },
 
     refreshContent : function(id) {

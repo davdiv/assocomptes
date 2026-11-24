@@ -3,23 +3,38 @@ on:
   push:
     branches: [master]
   pull_request:
-    branches: [master]
 jobs:
-  build:
+  e2e:
+    runs-on: ubuntu-24.04
+    env:
+      COMPOSE_PROJECT_NAME: assocomptes-e2e
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: sh preinstall.sh && npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: docker compose -f compose.e2e.yml up --build --wait --wait-timeout 180
+      - run: npm run test:e2e
+      - name: Show Compose logs
+        if: failure()
+        run: docker compose -f compose.e2e.yml logs --no-color
+      - if: always()
+        run: docker compose -f compose.e2e.yml down --volumes
+
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: e2e
     runs-on: ubuntu-latest
     steps:
-      - name: "GitHub variables"
-        run: echo "github.event_name = ${{ github.event_name }}, github.ref = ${{ github.ref }}"
-      - uses: actions/checkout@v2
-      - name: Set Node.js version
-        uses: actions/setup-node@v1
-        with:
-          node-version: "12.x"
-      - run: npm install
-      - run: sudo docker build . -t davdiv/assocomptes:latest
+      - uses: actions/checkout@v6
+      - run: docker build . -t davdiv/assocomptes:latest
       - name: Publish to dockerhub
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
-          echo ${{ secrets.DOCKERHUB_TOKEN }} | sudo docker login --username davdiv --password-stdin &&
-          sudo docker push davdiv/assocomptes:latest &&
-          sudo docker logout
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+          printf '%s' "$DOCKERHUB_TOKEN" | docker login --username davdiv --password-stdin
+          docker push davdiv/assocomptes:latest
+          docker logout

@@ -2,6 +2,25 @@
 
 assocomptes is a program to manage account sheets and bank deposits for an association.
 
+Requires Node.js 26 and MongoDB 4.4 or later.
+
+```sh
+sh preinstall.sh && npm ci && npm run build
+```
+
+Run end-to-end tests with Docker Compose:
+
+```sh
+npx playwright install chromium
+docker compose -f compose.e2e.yml up --build --wait
+npm run test:e2e
+docker compose -f compose.e2e.yml down --volumes
+```
+
+Deploy behind Traefik only; do not publish the app port. Set `AUTH_TRUSTED_PROXY` to Traefik's backend IP, `AUTH_ORIGIN` to the public HTTPS origin (no trailing slash), and `AUTH_LOGOUT_URL` to Authelia's HTTPS logout URL.
+Use [the test routing example](e2e/fixtures/traefik.yml) to strip incoming `Remote-User`, `Remote-Groups`, `Remote-Name` and `Remote-Email` before Authelia supplies them. Authelia groups use the former app role names.
+To preserve audit attribution, keep each old subject's `keycloakPeople` row and add a row with `_id` set to the Authelia username and the same person `id`. Do not reuse an identity key for another person.
+
 # License
 
 	assocomptes : Program to manage account sheets and bank deposits for an association.

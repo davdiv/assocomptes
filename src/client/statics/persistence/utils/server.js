@@ -16,40 +16,37 @@ var server = module.exports = function (method, action, data) {
     if (data != null) {
         data = serialization.stringify(data);
     }
-    return login.getToken().thenSync(function (token) {
-        return request(url, {
-            method : method,
-            data : data,
-            headers : {
-                'Authorization': 'Bearer ' + token
-            }
-        }).thenSync(function (xhr) {
-            var response = xhr.responseText;
-            return serialization.parse(response);
-        }, function (error) {
-            var httpRequest = error.args ? error.args[1] : null;
-            if (httpRequest) {
-                var status = httpRequest.status;
-                if (status == 0) {
-                    error = new ConnectionError();
-                } else {
-                    var responseText = httpRequest.responseText;
-                    if (responseText) {
-                        // Try to parse the response from the server as json:
-                        try {
-                            error = serialization.parse(responseText);
-                        } catch (e) {
-                            error = new UnknownError(status, responseText);
-                        }
-                    } else {
+    return request(url, {
+        method : method,
+        data : data,
+        headers : { Accept: "application/json" }
+    }).thenSync(function (xhr) {
+        return serialization.parse(xhr.responseText);
+    }, function (error) {
+        var httpRequest = error.args ? error.args[1] : null;
+        if (httpRequest) {
+            var status = httpRequest.status;
+            if (status == 0) {
+                error = new ConnectionError();
+            } else if (status == 401) {
+                error = new login.AuthenticationError("Vous avez été déconnecté(e)!");
+            } else {
+                var responseText = httpRequest.responseText;
+                if (responseText) {
+                    // Try to parse the response from the server as json:
+                    try {
+                        error = serialization.parse(responseText);
+                    } catch (e) {
                         error = new UnknownError(status, responseText);
                     }
+                } else {
+                    error = new UnknownError(status, responseText);
                 }
             }
-            var defer = promise.defer();
-            defer.reject(error);
-            return defer.promise;
-        });
+        }
+        var defer = promise.defer();
+        defer.reject(error);
+        return defer.promise;
     });
 };
 

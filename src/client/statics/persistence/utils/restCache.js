@@ -16,7 +16,7 @@ var RestCache = klass({
         if (!this.canRead()) {
             return Promise.reject(new login.AuthenticationError("Vous ne pouvez pas accéder à ce document."));
         }
-        return server("GET", this.basePath + "/" + id);
+        return server("GET", this.basePath + "/" + encodeURIComponent(id));
     },
     canSave : function () {
         return login.hasRole(this.writeRole);

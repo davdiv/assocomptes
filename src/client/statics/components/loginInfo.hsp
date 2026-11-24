@@ -1,16 +1,6 @@
 <script>
 var menu = require("../widgets/menu.hsp.js");
 var login = require("../login");
-
-var logout = function (event) {
-    event.preventDefault();
-    login.logout();
-};
-
-var manageAccount = function (event) {
-    event.preventDefault();
-    login.manageAccount();
-};
 </script>
 
 <template id="loginInfo">
@@ -18,8 +8,7 @@ var manageAccount = function (event) {
         <#menu>
             <@title><span class="glyphicon glyphicon-user"></span> {login.userDisplayName}</@title>
             <@content>
-                <li><a href="#" onclick="{manageAccount($event)}">Paramètres utilisateur</a></li>
-                <li><a href="#" onclick="{logout($event)}">Déconnexion</a></li>
+                <li><a href="{login.logoutUrl}">Déconnexion</a></li>
             </@content>
         </#menu>
     </ul>
