@@ -23,18 +23,3 @@ jobs:
         run: docker compose -f compose.e2e.yml logs --no-color
       - if: always()
         run: docker compose -f compose.e2e.yml down --volumes
-
-  publish:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    needs: e2e
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - run: docker build . -t davdiv/assocomptes:latest
-      - name: Publish to dockerhub
-        env:
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-        run: |
-          printf '%s' "$DOCKERHUB_TOKEN" | docker login --username davdiv --password-stdin
-          docker push davdiv/assocomptes:latest
-          docker logout
