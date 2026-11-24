@@ -26,7 +26,7 @@
   },
   "homepage": "https://github.com/davdiv/assocomptes",
   "devDependencies": {
-    "@playwright/test": "1.60.0",
+    "@playwright/test": "1.65.1",
     "atpackager": "0.3.0",
     "bootstrap": "3.4.1",
     "grunt": "0.4.5",
@@ -51,6 +51,6 @@
     "express": "4.22.3",
     "minimist": "1.2.5",
     "mongodb": "7.9.1",
-    "raw-body": "3.0.2"
+    "raw-body": "4.0.0"
   }
 }
