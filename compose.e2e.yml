@@ -19,7 +19,7 @@ services:
       retries: 20
 
   mongo:
-    image: mongo:8.3.17
+    image: mongo:9.0.8
     networks:
       - database
     ports:
