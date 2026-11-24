@@ -38,6 +38,10 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
+          if [ "$TAG" = "latest" ]; then
+            echo "Tag latest is reserved for the image alias." >&2
+            exit 1
+          fi
           if ! printf '%s' "$TAG" | grep -qE '^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$' ||
              ! git check-ref-format "refs/tags/$TAG"; then
             echo "Invalid tag: $TAG" >&2
@@ -63,7 +67,7 @@ jobs:
         run: |
           set -euo pipefail
           podman push "$IMAGE_REPO:$TAG"
-          if [ "$UPDATE_LATEST" = "true" ] && [ "$TAG" != "latest" ]; then
+          if [ "$UPDATE_LATEST" = "true" ]; then
             podman tag "$IMAGE_REPO:$TAG" "$IMAGE_REPO:latest"
             podman push "$IMAGE_REPO:latest"
           fi
