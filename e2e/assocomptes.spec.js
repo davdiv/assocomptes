@@ -18,6 +18,9 @@ async function signIn(page, username, path = "/") {
 test("signs in through Authelia and signs out of the session", async ({ page }) => {
     await signIn(page, "editor");
     await page.getByText("Hélène Example", { exact: true }).click();
+    await expect(page.getByRole("link", { name: "Paramètres utilisateur" })).toHaveAttribute(
+        "href", "https://auth.assocomptes.localhost:18443/settings/security"
+    );
     page.on("dialog", dialog => dialog.accept());
     await page.getByRole("link", { name: "Déconnexion" }).click();
     await expect(page).toHaveURL(loginUrl);
@@ -28,7 +31,7 @@ test("signs in through Authelia and signs out of the session", async ({ page }) 
 
 const forged = {
     "Remote-User": "editor",
-    "Remote-Groups": "writePeople",
+    "Remote-Groups": "people-writers",
     "Remote-Name": "Forged Name",
     "Remote-Email": "forged@example.test"
 };
@@ -82,7 +85,8 @@ test("denies reader writes and header impersonation, and shows old and new audit
         const impersonation = await page.request.get("/api/profile", { headers: forged });
         expect(impersonation.status()).toBe(200);
         expect(await impersonation.json()).toMatchObject({
-            username: "reader", groups: ["readPeople", "readAccountSheets", "readDeposits"],
+            username: "reader", groups: ["people-readers", "readAccountSheets", "readDeposits"],
+            roles: ["readPeople", "readAccountSheets", "readDeposits"],
             name: "Reader Example", email: "reader@example.test"
         });
         expect((await page.request.post("/api/people", { headers: { ...headers, ...forged }, data: { firstName: "Denied" } })).status()).toBe(403);
