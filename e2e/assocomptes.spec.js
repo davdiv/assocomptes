@@ -17,7 +17,7 @@ async function signIn(page, username, path = "/") {
 
 test("signs in through Authelia and signs out of the session", async ({ page }) => {
     await signIn(page, "editor");
-    await page.getByText("Editor Example", { exact: true }).click();
+    await page.getByText("Hélène Example", { exact: true }).click();
     page.on("dialog", dialog => dialog.accept());
     await page.getByRole("link", { name: "Déconnexion" }).click();
     await expect(page).toHaveURL(loginUrl);

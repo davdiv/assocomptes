@@ -1,5 +1,9 @@
 var net = require("net");
 
+function getIdentityHeader(req, name) {
+    return Buffer.from(req.get(name) || "", "latin1").toString("utf8");
+}
+
 module.exports = function (env) {
     var proxy = env.AUTH_TRUSTED_PROXY;
     if (!net.isIP(proxy)) {
@@ -15,7 +19,7 @@ module.exports = function (env) {
 
     return function (req, res, next) {
         var peer = req.socket.remoteAddress;
-        var username = (req.get("Remote-User") || "").trim();
+        var username = getIdentityHeader(req, "Remote-User").trim();
         if ((peer !== proxy && peer !== "::ffff:" + proxy) || !username || username.includes(",")) {
             return res.sendStatus(401);
         }
@@ -27,9 +31,9 @@ module.exports = function (env) {
 
         req.identity = {
             username: username,
-            name: req.get("Remote-Name") || username,
-            email: req.get("Remote-Email") || "",
-            groups: (req.get("Remote-Groups") || "").split(",").map(group => group.trim()).filter(Boolean),
+            name: getIdentityHeader(req, "Remote-Name") || username,
+            email: getIdentityHeader(req, "Remote-Email"),
+            groups: getIdentityHeader(req, "Remote-Groups").split(",").map(group => group.trim()).filter(Boolean),
             logoutUrl: logout.href
         };
         next();
