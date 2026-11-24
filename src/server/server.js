@@ -25,7 +25,7 @@ var startServer = async function (options, db) {
 
     app.set("json replacer", serialization.replacer);
 
-    app.use(auth(process.env));
+    app.use(auth(process.env, options.roleGroups));
     routes.forEach(function (curRoute) {
         app.get(curRoute.path, sendHtmlFile);
     });

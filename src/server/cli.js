@@ -1,18 +1,35 @@
+var roleOptions = {
+    readPeople: "read-people-group",
+    writePeople: "write-people-group",
+    readAccountSheets: "read-account-sheets-group",
+    writeAccountSheets: "write-account-sheets-group",
+    readDeposits: "read-deposits-group",
+    writeDeposits: "write-deposits-group"
+};
+
 var parse = function(argv) {
     var minimist = require("minimist");
-    return minimist(argv, {
-        "string" : [],
+    var defaults = {
+        "port" : parseInt(process.env.PORT, 10) || 8080,
+        "db-url" : process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://localhost:27017/test',
+        "db-empty" : process.env.ASSOCOMPTES_DB_EMPTY == "empty"
+    };
+    var roles = Object.entries(roleOptions);
+    for (var [role, option] of roles) {
+        var envName = "ASSOCOMPTES_" + option.replaceAll("-", "_").toUpperCase();
+        defaults[option] = process.env[envName]?.trim() || role;
+    }
+    var options = minimist(argv, {
+        "string" : Object.values(roleOptions),
         "boolean" : [ "help", "version", "dev", "db-empty" ],
         "alias" : {
             "help" : "h",
             "version" : "v"
         },
-        "default" : {
-            "port" : parseInt(process.env.PORT, 10) || 8080,
-            "db-url" : process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://localhost:27017/test',
-            "db-empty" : process.env.ASSOCOMPTES_DB_EMPTY == "empty"
-        }
+        "default" : defaults
     });
+    options.roleGroups = Object.fromEntries(roles.map(([role, option]) => [role, options[option]]));
+    return options;
 };
 
 var execute = async function(options) {

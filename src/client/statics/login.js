@@ -11,6 +11,7 @@ exports.done = request("/api/profile", { headers: { Accept: "application/json" }
     profile = JSON.parse(xhr.responseText);
     exports.userDisplayName = profile.name;
     exports.logoutUrl = profile.logoutUrl;
+    exports.profileUrl = profile.profileUrl;
 }, function () {
     return Promise.reject(new AuthenticationError("L'authentification a échoué!"));
 });
@@ -20,5 +21,5 @@ exports.isAuthenticated = function () {
 };
 
 exports.hasRole = function (role) {
-    return !!profile && profile.groups.indexOf(role) !== -1;
+    return !!profile && profile.roles.indexOf(role) !== -1;
 };

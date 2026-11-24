@@ -8,6 +8,9 @@ var login = require("../login");
         <#menu>
             <@title><span class="glyphicon glyphicon-user"></span> {login.userDisplayName}</@title>
             <@content>
+                {if login.profileUrl}
+                    <li><a href="{login.profileUrl}">Paramètres utilisateur</a></li>
+                {/if}
                 <li><a href="{login.logoutUrl}">Déconnexion</a></li>
             </@content>
         </#menu>

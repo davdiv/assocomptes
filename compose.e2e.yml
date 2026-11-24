@@ -1,11 +1,14 @@
 services:
   app:
     build: .
-    command: ["--db-url", "mongodb://mongo:27017/assocomptes_e2e"]
+    command: ["--db-url", "mongodb://mongo:27017/assocomptes_e2e", "--write-people-group", "people-writers"]
     environment:
       AUTH_TRUSTED_PROXY: 172.30.83.2
       AUTH_ORIGIN: https://assocomptes.localhost:18443
       AUTH_LOGOUT_URL: https://auth.assocomptes.localhost:18443/logout
+      AUTH_PROFILE_URL: https://auth.assocomptes.localhost:18443/settings/security
+      ASSOCOMPTES_READ_PEOPLE_GROUP: people-readers
+      ASSOCOMPTES_WRITE_PEOPLE_GROUP: ignored-writers
     networks:
       - backend
       - database
