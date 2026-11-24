@@ -1,4 +1,4 @@
-var rawBody = require("raw-body");
+var rawBody = require("raw-body").getRawBody;
 var serialization = require('../common/serialization');
 
 module.exports = function (req, res, next) {
