@@ -38,7 +38,7 @@ module.exports = function (config) {
 
     function initialize () {
         console.log('Initializing the database');
-        return db.collection('general').insert({
+        return db.collection('general').insertOne({
             _id : 0,
             application : versionCheck.application,
             dbVersion : versionCheck.dbVersion,
@@ -51,7 +51,7 @@ module.exports = function (config) {
     }
 
     function createRegistrationsPeopleIndex () {
-        return db.collection("registrations").ensureIndex({
+        return db.collection("registrations").createIndex({
             "current.people" : 1
         }, {
             unique : true,

@@ -1,0 +1,36 @@
+http:
+  routers:
+    assocomptes:
+      rule: Host(`assocomptes.localhost`)
+      entryPoints: [websecure]
+      tls: {}
+      middlewares: [strip-identity, authelia]
+      service: app
+    authelia:
+      rule: Host(`auth.assocomptes.localhost`)
+      entryPoints: [websecure]
+      tls: {}
+      service: authelia
+  middlewares:
+    strip-identity:
+      headers:
+        customRequestHeaders:
+          Remote-User: ""
+          Remote-Groups: ""
+          Remote-Name: ""
+          Remote-Email: ""
+    authelia:
+      forwardAuth:
+        address: http://authelia:9091/api/authz/forward-auth
+        trustForwardHeader: false
+        authRequestHeaders: [Accept, Cookie]
+        authResponseHeaders: [Remote-User, Remote-Groups, Remote-Name, Remote-Email]
+  services:
+    app:
+      loadBalancer:
+        servers:
+          - url: http://app:8080
+    authelia:
+      loadBalancer:
+        servers:
+          - url: http://authelia:9091

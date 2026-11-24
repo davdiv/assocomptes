@@ -1,5 +1,3 @@
-var ObjectID = require("mongodb").ObjectID;
-
 module.exports = function (dbCollection) {
     return async function (req, res, next) {
         try {
