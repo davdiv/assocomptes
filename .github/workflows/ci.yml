@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       COMPOSE_PROJECT_NAME: assocomptes-e2e
+      PLAYWRIGHT_CHANNEL: chrome
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -15,7 +16,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: sh preinstall.sh && npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: google-chrome --version
       - run: docker compose -f compose.e2e.yml up --build --wait --wait-timeout 180
       - run: npm run test:e2e
       - name: Show Compose logs
