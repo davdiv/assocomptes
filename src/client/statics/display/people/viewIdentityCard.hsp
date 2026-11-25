@@ -10,13 +10,21 @@ var contactDetailProtocol = {
     "email":"mailto:"
 };
 
+var encodeContactDetailValue = function (type, value) {
+    var encoded = encodeURIComponent(value);
+    if (type === "phone") {
+        return encoded.replace(/%2B/g, "+").replace(/%3B/g, ";").replace(/%3D/g, "=");
+    }
+    return encoded.replace(/%40/g, "@").replace(/%2B/g, "+");
+};
+
 var contactDetailHref = function (contactDetail) {
     var protocol = contactDetailProtocol[contactDetail.type];
     var value = contactDetail.value;
     if (!protocol || value == null || value === "") {
         return null;
     }
-    return protocol + encodeURIComponent(value).replace(/%40/g, "@").replace(/%2B/g, "+");
+    return protocol + encodeContactDetailValue(contactDetail.type, value);
 };
 </script>
 
