@@ -4,7 +4,7 @@ http:
       rule: Host(`assocomptes.localhost`)
       entryPoints: [websecure]
       tls: {}
-      middlewares: [strip-identity, authelia]
+      middlewares: [authelia]
       service: app
     authelia:
       rule: Host(`auth.assocomptes.localhost`)
@@ -12,13 +12,6 @@ http:
       tls: {}
       service: authelia
   middlewares:
-    strip-identity:
-      headers:
-        customRequestHeaders:
-          Remote-User: ""
-          Remote-Groups: ""
-          Remote-Name: ""
-          Remote-Email: ""
     authelia:
       forwardAuth:
         address: http://authelia:9091/api/authz/forward-auth

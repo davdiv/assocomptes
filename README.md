@@ -18,7 +18,7 @@ docker compose -f compose.e2e.yml down --volumes
 ```
 
 Deploy behind Traefik only; do not publish the app port. Set `AUTH_TRUSTED_PROXY` to Traefik's backend IP, `AUTH_ORIGIN` to the public HTTPS origin (no trailing slash), and `AUTH_LOGOUT_URL` to Authelia's HTTPS logout URL.
-Use [the test routing example](e2e/fixtures/traefik.yml) to strip incoming `Remote-User`, `Remote-Groups`, `Remote-Name` and `Remote-Email` before Authelia supplies them.
+Configure Traefik `forwardAuth` as in [the test routing example](e2e/fixtures/traefik.yml): listing `Remote-User`, `Remote-Groups`, `Remote-Name` and `Remote-Email` in `authResponseHeaders` makes Traefik drop client-supplied copies.
 Set `AUTH_PROFILE_URL` to an HTTPS Authelia settings URL (e.g. `https://auth.example.org/settings/security`) to show the user settings link.
 Authelia group names default to the existing app roles. Override them with `--read-people-group`, `--write-people-group`, `--read-account-sheets-group`, `--write-account-sheets-group`, `--read-deposits-group` or `--write-deposits-group`.
 Each option overrides its corresponding `ASSOCOMPTES_*` environment variable (e.g. `--read-people-group` overrides `ASSOCOMPTES_READ_PEOPLE_GROUP`).
