@@ -1,10 +1,4 @@
-var removeDelimiters = function (str) {
-    if (str == null) {
-        return "";
-    }
-    str = str + "";
-    return str.replace(/\t/g, "    ").replace(/\r|\n/g, " ");
-};
+var sanitizeSpreadsheetCell = require("./utils/sanitizeSpreadsheetCell");
 
 module.exports = function (columnsDefinition, dataArray) {
     var content = [];
@@ -12,7 +6,7 @@ module.exports = function (columnsDefinition, dataArray) {
         if (index > 0) {
             content.push("\t");
         }
-        content.push(removeDelimiters(column.title));
+        content.push(sanitizeSpreadsheetCell(column.title));
     });
     content.push("\n");
     dataArray.forEach(function (object) {
@@ -20,7 +14,7 @@ module.exports = function (columnsDefinition, dataArray) {
             if (index > 0) {
                 content.push("\t");
             }
-            content.push(removeDelimiters(column.getValue(object)));
+            content.push(sanitizeSpreadsheetCell(column.getValue(object)));
         });
         content.push("\n");
     });

@@ -6,11 +6,22 @@ var versionCheck = {
     dbVersion : 'DB-0'
 };
 
+var redactDatabaseUrl = function (dbUrl) {
+    try {
+        var url = new URL(dbUrl);
+        url.username = "";
+        url.password = "";
+        return url.toString();
+    } catch (e) {
+        return String(dbUrl).replace(/^([a-zA-Z][a-zA-Z0-9+.-]*:\/\/)[^/]*@/, "$1***@");
+    }
+};
+
 module.exports = function (config) {
     var db = null;
 
     function start () {
-        console.log('Connecting to database at %s', config["db-url"]);
+        console.log('Connecting to database at %s', redactDatabaseUrl(config["db-url"]));
         return connectDatabase(config["db-url"]).then(setDbAndContinue);
     }
 

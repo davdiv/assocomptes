@@ -17,7 +17,7 @@ module.exports = v.validator([ v.mandatory, v.object({
     birthCountry : v.string,
     nationalities : [ v.removeStringDuplicates, v.array([ v.mandatory, v.string, v.minLength(1) ]) ],
     contactDetails : v.array([ v.mandatory, v.object({
-        type : v.enumValue([ "email", "phone" ]),
+        type : [ v.mandatory, v.enumValue([ "email", "phone" ]) ],
         value : [ v.mandatory, v.string ]
     }) ]),
     lastChangeTimestamp : v.date,
