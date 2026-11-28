@@ -9,6 +9,23 @@ var contactDetailProtocol = {
     "phone": "tel:",
     "email":"mailto:"
 };
+
+var encodeContactDetailValue = function (type, value) {
+    var encoded = encodeURIComponent(value);
+    if (type === "phone") {
+        return encoded.replace(/%2B/g, "+").replace(/%3B/g, ";").replace(/%3D/g, "=");
+    }
+    return encoded.replace(/%40/g, "@").replace(/%2B/g, "+");
+};
+
+var contactDetailHref = function (contactDetail) {
+    var protocol = contactDetailProtocol[contactDetail.type];
+    var value = contactDetail.value;
+    if (!protocol || value == null || value === "") {
+        return null;
+    }
+    return protocol + encodeContactDetailValue(contactDetail.type, value);
+};
 </script>
 
 <template id="identityCard" args="data">
@@ -35,7 +52,7 @@ Coordonnées:
 {foreach contactDetail in data.contactDetails}
 {if contactDetail.type == "email"}@{else if contactDetail.type == "phone"}
 <span class="glyphicon glyphicon-phone-alt"></span>
-{/if}&nbsp;<a target="_blank" href="{contactDetailProtocol[contactDetail.type]}{contactDetail.value}">{contactDetail.value}</a>{if !contactDetail_islast}, {/if}
+{/if}&nbsp;{if contactDetailHref(contactDetail)}<a target="_blank" href="{contactDetailHref(contactDetail)}">{contactDetail.value}</a>{else}{contactDetail.value}{/if}{if !contactDetail_islast}, {/if}
 {/foreach}<br>
 {/if}
 

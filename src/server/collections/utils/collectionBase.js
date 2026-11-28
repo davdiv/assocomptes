@@ -1,6 +1,7 @@
 var ObjectID = require("mongodb").ObjectId;
 var NotFoundError = require("../../../common/notFoundError");
 var SimpleError = require("../../../common/simpleError");
+var searchSanitizer = require("./searchSanitizer");
 
 module.exports = class {
     constructor(collection, historyCollection) {
@@ -128,9 +129,15 @@ module.exports = class {
 
     search(query, options) {
         var self = this;
-        query = query || {};
-        options = options || {};
-        return self.collection.find(query, Object.assign({}, options, {
+        var sanitizedQuery;
+        var sanitizedOptions;
+        try {
+            sanitizedQuery = searchSanitizer.sanitizeQuery(query);
+            sanitizedOptions = searchSanitizer.sanitizeOptions(options);
+        } catch (e) {
+            return Promise.reject(e);
+        }
+        return self.collection.find(sanitizedQuery, Object.assign({}, sanitizedOptions, {
             projection : { "current" : 1 }
         })).toArray().then(function (array) {
             return array.map(self.processFromDB, self);

@@ -2,6 +2,7 @@ var createCashboxDetails = require("./validation/cashboxDetails/create");
 var recomputeCashboxDetails = require("./validation/cashboxDetails/recompute");
 var addCashboxDetails = require("./validation/cashboxDetails/add");
 var formatCurrency = require("./utils/formatCurrency");
+var sanitizeSpreadsheetCell = require("./utils/sanitizeSpreadsheetCell");
 
 function formatNumber(value) {
     return formatCurrency(value).replace(/\./,",").replace(/ €$/,"");
@@ -179,8 +180,8 @@ module.exports = function (sheets, getCategory, config) {
         var operationNumber = index + 1;
         var date = formatDate(operation.date);
         var amount = formatNumber(operation.amount);
-        outputLines.push([operationNumber, date, config.journal, "", operation.src, operation.item, "", "0,00", amount, "", operation.srcAnalytic || "", "PR"].join("\t"));
-        outputLines.push([operationNumber, date, config.journal, "", operation.dst, operation.item, "", amount, "0,00", "", operation.dstAnalytic || "", "PR"].join("\t"));
+        outputLines.push([operationNumber, date, config.journal, "", operation.src, operation.item, "", "0,00", amount, "", operation.srcAnalytic || "", "PR"].map(sanitizeSpreadsheetCell).join("\t"));
+        outputLines.push([operationNumber, date, config.journal, "", operation.dst, operation.item, "", amount, "0,00", "", operation.dstAnalytic || "", "PR"].map(sanitizeSpreadsheetCell).join("\t"));
     });
     return outputLines.join("\r\n");
 };
